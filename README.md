@@ -68,17 +68,17 @@ nixarch.packages.aur    = config.nixdb.clients.aurPackages;
 
 ## It consumes the app grammar; it does not reimplement Kubernetes
 
-`modules/cluster.nix` **defines into `nixk3s.apps`** and renders nothing itself. A self-managed
-engine declares an image, ports, state, secrets and probes in the grammar's own vocabulary, and the
-grammar renders the Application, the Namespace, the Deployment and the Service. Import the grammar
-alongside this module — it is a hard requirement, and a version of this module that quietly
-rendered its own Deployments when the grammar was absent would be the second implementation this
-repository exists to not have.
+`modules/cluster.nix` is constructed by nixk3s's shared catalogue-consumer factory. It supplies
+three catalogue roots and only nixdb's bounded adapters: operators dispatch to manifests or
+references, managed instances dispatch to manifests, and self-managed engines plus tools dispatch
+to typed apps. The factory defines those apps into `nixk3s.apps`; the grammar renders the
+Application, Namespace, Deployment and Service. Import the grammar alongside this module — it is a
+hard requirement, and a version that quietly rendered its own Deployments when the grammar was
+absent would be the second implementation this repository exists to avoid.
 
-Neither flake is an input of the other for a consumer. `nixk3s` and `nixidy` are **checks-only**
-inputs here, so `nix flake check` can render this module through the real grammar and assert the
-manifests that come out — rather than asserting that a module which merely mentions `nixk3s.apps`
-evaluates.
+`nixk3s` is therefore both the source of the exported consumer factory and the real grammar used by
+the checks. `nixidy` remains checks-only. A consuming environment still composes nixdb's exported
+module beside nixk3s's app grammar and, when `clusterPlatform.origin` is set, its addressing module.
 
 **Two things the grammar cannot express**, and this repository says so rather than working around
 it silently. The grammar renders a Deployment for every app, unconditionally, from a required
@@ -290,7 +290,7 @@ What is public is the mechanism: the catalogue, the knowledge in it, the render,
 | `flake.nix` | `nixidyModules` (cluster), `nixosModules`/`systemManagerModules` (clients), `lib.*`, `checks`. |
 | `lib/engines.nix` | The cluster catalogue: operators, engines, tooling — and the knowledge that makes each run. |
 | `lib/clients.nix` | The client catalogue: ten packages in four groups, each named on both platforms, plus the verification contract every one of them met. |
-| `modules/cluster.nix` | The cluster surface: translates declarations into `nixk3s.apps`, and renders the two things that grammar cannot express one level below it. |
+| `modules/cluster.nix` | The cluster surface: configures nixk3s's shared consumer factory with the operator/instance/tool roots and nixdb's domain adapters and interlocks. |
 | `modules/clients.nix` | Client policy and the published `archPackages`/`aurPackages`/`nixosPackages`/`unavailableOnNixos`/`binaries`. Also *is* the Arch backend — there is nothing platform-specific left for a second file to hold. |
 | `modules/nixos.nix` | The NixOS backend: force-evaluates every attribute and installs it; warns separately for a stale mapping and for a package nixpkgs simply does not have. |
 | `checks/` | Three checks that really evaluate — see below. |
@@ -320,14 +320,16 @@ both directions: an empty tier defines no app at all, a declared tier's whole co
 exactly the workloads it declares, the engine's own knowledge reaches the grammar, a credential is a
 reference, the two rungs of a ladder are two independent objects, the catalogue alone decides
 whether a liveness probe exists, and a declared budget moves the timing and nothing else. Then
-seventeen declarations that must each be **refused** — a managed instance with no operator, a
+declarations that must each be **refused** — a managed instance with no operator, a
 managed instance with no resource, a self-managed engine passing verbatim objects, an operator
 ordered above its instances, an engine with an unbacked directory, storage with neither or both
 backings, a credential on an engine that reads none, two workloads on one slot, two workloads
 creating one namespace, a namespace anchored by a workload rendered below the grammar, a tool
 passing verbatim objects, an operator nothing delivers, an engine idled to zero, an operator idled
 to zero, a liveness budget for software with no liveness probe, a probe budget on a workload with no
-probes — against a control that must render. Two of those refusals
+probes, plus attempts to write factory-only resource, backing and credential terms — against a
+control that must render. Central collision and delivery guards are additionally checked to occur
+exactly once rather than once in the factory and once in a retired local copy. Two domain refusals
 have their *message* asserted by content, because `tryEval` can only say *that* something was
 refused.
 

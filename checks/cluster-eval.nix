@@ -35,6 +35,17 @@ let
     map (a: a.message)
       (lib.filter (a: !a.assertion) (mkEnv values).config.nixidy.assertions);
 
+  # Cross-root invariants now belong to the shared factory. One bad declaration must therefore
+  # produce one factory diagnostic, not the same sentence once from the factory and once from the
+  # retired translator.
+  failsExactlyOnceWith = infix: values:
+    let
+      result = builtins.tryEval (lib.length (lib.filter
+        (assertion: !assertion.assertion && lib.hasInfix infix assertion.message)
+        (mkEnv values).config.nixidy.assertions));
+    in
+    result.success && result.value == 1;
+
   ## ---------------------------------------------------------------------
   ## The floor: an empty tier renders nothing at all
   ## ---------------------------------------------------------------------
@@ -128,6 +139,7 @@ let
       yamls = [ "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: op\n  namespace: example-dbs\n" ];
     };
   };
+  emptyManifestsDeliveredCfg = (mkEnv emptyManifestsDelivered).config;
 
   # One tier, two renderers, and the split is a property of the ENGINE rather than of the
   # declaration -- which is exactly what makes it worth pinning.
@@ -169,6 +181,11 @@ let
           slot = 37;
           state.data.hostPath = "/example/data/multimodel";
         };
+      };
+
+    engine-with-an-unknown-directory =
+      lib.recursiveUpdate goodTier {
+        nixdb.instances.sql.state.unknown.hostPath = "/example/data/unknown";
       };
 
     state-with-no-backing =
@@ -232,6 +249,19 @@ let
     # The same guard from the other side: an operator is a controller and has no probes at all.
     probe-budget-on-a-workload-with-no-probes =
       lib.recursiveUpdate goodTier { nixdb.operators.op.probeBudget.readiness.timeoutSeconds = 5; };
+
+    # The factory has a wider common vocabulary, but adopting it must not silently widen nixdb's
+    # established declaration schema. These are unknown options, not values a later guard ignores.
+    factory-only-resource-term =
+      lib.recursiveUpdate goodTier { nixdb.tools.browser.resources.cpuRequest = "10m"; };
+
+    factory-only-state-backing =
+      lib.recursiveUpdate goodTier { nixdb.instances.sql.state.data.emptyDir = true; };
+
+    factory-variable-shaped-credentials =
+      lib.recursiveUpdate goodTier {
+        nixdb.instances.sql.credentials.keys.MARIADB_ROOT_PASSWORD = "rootPassword";
+      };
   };
 
   wronglyRendered = lib.attrNames (lib.filterAttrs (_: v: v) (lib.mapAttrs (_: renders) mustFail));
@@ -273,9 +303,11 @@ let
       sorted (lib.subtractLists (lib.attrNames emptyCfg.applications) (lib.attrNames goodCfg.applications))
       == sorted (goodCfg.nixdb.renderedByGrammar ++ goodCfg.nixdb.renderedDirectly);
 
-    "an empty tier reports nothing rendered on either side, and claims no slots" =
+    "an empty tier reports nothing through any factory delivery kind, and claims no slots" =
       emptyCfg.nixdb.renderedByGrammar == [ ]
       && emptyCfg.nixdb.renderedDirectly == [ ]
+      && emptyCfg.nixdb.notRendered == [ ]
+      && emptyCfg.nixdb.clusterSlots == { }
       && emptyCfg.nixdb.slots == { };
 
     "an empty tier raises no assertion of its own -- an unused module must be silent" =
@@ -288,6 +320,10 @@ let
     # operator would pass the failing case above while making the supported shape unusable.
     "an operator with no manifests renders once something else in the environment delivers it" =
       renders emptyManifestsDelivered;
+
+    "an externally delivered operator is reported as a reference rather than as a direct render" =
+      emptyManifestsDeliveredCfg.nixdb.notRendered == [ "op" ]
+      && emptyManifestsDeliveredCfg.nixdb.renderedDirectly == [ "pg-newer" "pg-older" ];
 
     # ── Occupancy: every position this tier holds is visible to the band model ────────────────
     # The grammar-rendered half arrives through `addressingOf`; everything else would be invisible,
@@ -319,6 +355,7 @@ let
 
     "the two sides are disjoint and together account for every declared workload" =
       lib.intersectLists goodCfg.nixdb.renderedByGrammar goodCfg.nixdb.renderedDirectly == [ ]
+      && goodCfg.nixdb.notRendered == [ ]
       && lib.length (goodCfg.nixdb.renderedByGrammar ++ goodCfg.nixdb.renderedDirectly) == 6;
 
     "the grammar receives exactly the workloads it renders, with the engine's own knowledge filled in" =
@@ -390,7 +427,8 @@ let
       && goodCfg.applications.pg-newer.compareOptions.serverSideDiff == "ServerSideDiff=true";
 
     "the slot report covers every workload that claims one, on both sides of the render split" =
-      goodCfg.nixdb.slots == { op = 33; pg-older = 34; pg-newer = 35; sql = 36; browser = 40; schema = 41; };
+      goodCfg.nixdb.slots == { op = 33; pg-older = 34; pg-newer = 35; sql = 36; browser = 40; schema = 41; }
+      && goodCfg.nixdb.clusterSlots == goodCfg.nixdb.slots;
 
     "the operator's chart coordinates are published WITHOUT a version -- a version here would be a second pin nothing keeps honest" =
       goodCfg.nixdb.operatorCharts.op == {
@@ -420,6 +458,24 @@ let
 
     "the unbacked-directory refusal says which directories the engine writes, and where" =
       unbackedMessageNames;
+
+    "the factory is the single cross-root slot-collision authority" =
+      failsExactlyOnceWith "slot 36 is claimed by 2 workloads"
+        mustFail.two-workloads-on-one-slot;
+
+    "the factory is the single namespace-anchor collision authority" =
+      failsExactlyOnceWith "Exactly one workload may create a namespace"
+        mustFail.two-workloads-creating-one-namespace;
+
+    "the factory is the single direct-delivery namespace safety authority" =
+      failsExactlyOnceWith "non-grammar renderer cannot stamp"
+        mustFail.directly-rendered-workload-anchoring-a-namespace;
+
+    "the factory is the single typed-app manifest authority" =
+      failsExactlyOnceWith "rendered in full by the app grammar and also carries whole manifests"
+        mustFail.self-managed-instance-passing-verbatim-objects
+      && failsExactlyOnceWith "rendered in full by the app grammar and also carries whole manifests"
+        mustFail.tool-passing-verbatim-objects;
   };
 
   failed = lib.attrNames (lib.filterAttrs (_: passed: !passed) results);

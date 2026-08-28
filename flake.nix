@@ -1,11 +1,9 @@
 {
   description = "nixdb — the database tier, declared: engines and the operator that manages them as cluster workloads, plus every database client a person installs on a host";
 
-  # NO INPUTS FOR CONSUMERS, the same reasoning the sibling catalogues state for themselves: this
-  # flake is options plus a catalogue, taking `pkgs`/`config`/`lib` from whichever evaluation
-  # composes it, so a real host or a real cluster render never puts a second nixpkgs -- or a sibling
-  # flake's whole input closure -- into its own closure. Everything below is used by `checks` alone;
-  # nothing this flake EXPORTS reaches into any of it.
+  # The host modules remain options plus catalogues, taking `pkgs`/`config`/`lib` from whichever
+  # evaluation composes them. The cluster module closes over nixk3s' consumer factory, while still
+  # taking the composing nixidy environment's module arguments. nixidy itself remains checks-only.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -17,11 +15,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # THE APP GRAMMAR THIS REPOSITORY CONSUMES. Also checks-only, and that is the point being
-    # proven rather than a shortcut: a consumer imports the grammar itself, and this input exists so
-    # `nix flake check` can render the cluster module through the REAL grammar and assert the
-    # manifests that come out -- rather than asserting that a module which merely mentions
-    # `nixk3s.apps` evaluates.
+    # THE APP GRAMMAR AND CONSUMER FACTORY THIS REPOSITORY CONSUMES. Checks render through the real
+    # grammar, and the exported cluster module is constructed by the matching shared factory.
     nixk3s = {
       url = "github:julian-corbet/nixk3s-corbet-ch";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -55,8 +50,10 @@
     {
       # The cluster plane. Composed into a nixidy environment ALONGSIDE the app grammar, which
       # declares the options this module defines into -- see modules/cluster.nix's own header.
-      nixidyModules.nixdb = ./modules/cluster.nix;
-      nixidyModules.default = ./modules/cluster.nix;
+      nixidyModules.nixdb = import ./modules/cluster.nix {
+        mkConsumerModule = nixk3s.lib.mkConsumerModule;
+      };
+      nixidyModules.default = self.nixidyModules.nixdb;
 
       # The host plane, for the database clients. Here the system is nix, so the backend
       # installs; on Arch there is nothing to install FROM, so the policy module IS that backend and
@@ -71,7 +68,7 @@
       # Policy alone, for a consumer that wants the computed lists and will wire them itself, plus
       # the raw catalogues for inspection without re-reading the files.
       lib.clientsPolicy = ./modules/clients.nix;
-      lib.cluster = ./modules/cluster.nix;
+      lib.cluster = self.nixidyModules.nixdb;
       lib.engines = import ./lib/engines.nix { };
       lib.clients = import ./lib/clients.nix { };
 
