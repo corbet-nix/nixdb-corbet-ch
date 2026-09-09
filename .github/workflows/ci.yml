@@ -1,6 +1,6 @@
 name: ci
 
-# Manual fallback; trusted verification runs through Crow (see ci/README.md).
+# Manual fallback; trusted verification runs through Crow (see .ci/README.md).
 on:
   workflow_dispatch:
 
@@ -34,4 +34,4 @@ jobs:
       # every problem at once. A failing check still fails the run -- it just stops taking the
       # other checks' results down with it.
       - name: nix flake check (all systems)
-        run: ci/check all-systems
+        run: nix flake check --all-systems --keep-going --print-build-logs
