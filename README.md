@@ -5,7 +5,7 @@ them, and every database client a person installs on a host — with the knowled
 makes each one actually run.**
 
 It renders no Kubernetes object of its own. Everything expressible as an app is expressed in
-[nixk3s](https://github.com/julian-corbet/nixk3s-corbet-ch)'s app grammar; what this repository adds
+[nixk3s](https://github.com/corbet-nix/nixk3s-corbet-ch)'s app grammar; what this repository adds
 is the one thing that grammar cannot know — what a database *is*.
 
 ## What this is
@@ -154,7 +154,7 @@ self-hosted application ships or requires a database, and if proximity to one we
 catalogue would swallow the whole application layer. A wiki that keeps its pages in Postgres is a
 wiki; the Postgres is ours.
 
-**Not the application cookbook's.** [nixapps](https://github.com/julian-corbet/nixapps-corbet-ch)
+**Not the application cookbook's.** [nixapps](https://github.com/corbet-nix/nixapps-corbet-ch)
 describes *ordinary* self-hosted applications — things a person opens, sitting at the leaves of the
 dependency graph, consuming a database. Everything here sits at the root of that graph. That repo's
 own contract says it will never grow "a storage provisioner, a device plugin, a project renderer";
@@ -174,7 +174,7 @@ so it is useless without engines to point at and is deployed alongside them, by 
 
 **On the host side, every database tool is claimed.** The engine shells, the multi-engine command
 lines and the file inspectors are all catalogued here — none of them is in
-[nixsh](https://github.com/julian-corbet/nixsh-corbet-ch), the universal terminal-tool shelf, or in
+[nixsh](https://github.com/corbet-nix/nixsh-corbet-ch), the universal terminal-tool shelf, or in
 the development-tooling repository, because one package belongs to one catalogue: on a NixOS host
 they all feed the same package list, so a second entry is a collision rather than a redundancy.
 
@@ -359,13 +359,14 @@ backends. It is the half of this repository that is ready to be consumed as it s
 ## Related projects
 
 Part of the same independently-usable module family:
-[nixk3s](https://github.com/julian-corbet/nixk3s-corbet-ch) (the app grammar this consumes, and the
+[nixk3s](https://github.com/corbet-nix/nixk3s-corbet-ch) (the app grammar this consumes, and the
 band model its slots answer to),
-[nixapps](https://github.com/julian-corbet/nixapps-corbet-ch) (the ordinary applications that sit at
+[nixapps](https://github.com/corbet-nix/nixapps-corbet-ch) (the ordinary applications that sit at
 the other end of the dependency graph and consume these engines), and
-[nixsh](https://github.com/julian-corbet/nixsh-corbet-ch) (the universal terminal-tool shelf, which
+[nixsh](https://github.com/corbet-nix/nixsh-corbet-ch) (the universal terminal-tool shelf, which
 catalogues the engine-agnostic database tools this repository does not duplicate).
 
-## License
 
-MIT License &copy; 2026 Julian Corbet
+## Licence
+
+Outbound licence is `MIT OR Apache-2.0`. See `LICENSE-MIT` and `LICENSE-APACHE`; every source file carries `SPDX-License-Identifier: MIT OR Apache-2.0`.

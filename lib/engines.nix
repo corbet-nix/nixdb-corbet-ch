@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # The cluster catalogue: what the database tier can run. Three groups, because the tier genuinely
 # contains three kinds of thing and flattening them would make the model lie:

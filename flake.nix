@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 {
   description = "nixdb — the database tier, declared: engines and the operator that manages them as cluster workloads, plus every database client a person installs on a host";
 
@@ -18,7 +19,7 @@
     # THE APP GRAMMAR AND CONSUMER FACTORY THIS REPOSITORY CONSUMES. Checks render through the real
     # grammar, and the exported cluster module is constructed by the matching shared factory.
     nixk3s = {
-      url = "git+https://github.com/julian-corbet/nixk3s-corbet-ch";
+      url = "git+https://github.com/corbet-nix/nixk3s-corbet-ch";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nixidy.follows = "nixidy";
     };

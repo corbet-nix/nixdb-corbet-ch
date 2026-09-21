@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # nixdb's cluster surface: catalogue knowledge translated through nixk3s.
 #

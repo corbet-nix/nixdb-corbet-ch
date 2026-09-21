@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # THE VERIFICATION CONTRACT every name in lib/clients.nix has met, runnable. Point it at the
 # catalogue and it answers every question that matters before a name reaches a host -- which is why
 # adding an entry is a one-line change rather than a research project.
